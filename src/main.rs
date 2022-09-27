@@ -16,27 +16,46 @@ const SPEED_2: u64 = 3; // 3ups
 const SPEED_3: u64 = 5; // 5ups
 const SPEED_4: u64 = 10; // 10ups
 const SPEED_5: u64 = 20; // 20ups
-const SPEED: u64 = SPEED_4;
+const SPEED: u64 = SPEED_3;
 
-struct Board {active: bool, start: i32}
+const UP: (i32, i32) = (0, -1);
+const DOWN: (i32, i32) = (0, 1);
+const RIGHT: (i32, i32) = (1, 0);
+const LEFT: (i32, i32) = (-1, 0);
 
-impl Board { // 14 X 20
-    pub fn nodes (&self) -> Vec<[f64; 4]> {
-        (self.start+0..self.start+5)
-        .map(|i| Node::new(i * (SIZE as i32), 1 * (SIZE as i32)).display_data())
-        .collect::<Vec<_>>()
+struct Snake {direction: (i32, i32), last_direction: (i32, i32), nodes: Vec<Node>}
+
+impl Snake { // 14 X 20
+    pub fn nodes_display_data (&mut self) -> Vec<[f64; 4]> {
+        self.nodes.iter().map(|node| node.display_data()).collect::<Vec<_>>()
+    }
+
+    pub fn handle_key (&mut self, args: &Button) {
+        if let &Button::Keyboard(key) = args {
+            self.direction = match key {
+                Key::Up if self.last_direction != DOWN => UP,
+                Key::Down if self.last_direction != UP => DOWN,
+                Key::Right if self.last_direction != LEFT => RIGHT,
+                Key::Left if self.last_direction != RIGHT => LEFT,
+                _ => self.direction
+            }
+        }
     }
 
     pub fn update(&mut self) {
-        self.start += 1;
+        self.last_direction = self.direction;
+        self.nodes.pop();
+        let head = &self.nodes[0];
+        self.nodes.insert(0, Node::new(head.x + self.direction.0, head.y + self.direction.1));
     }
 }
 
-impl Default for Board {
-    fn default() -> Board {
-        Board {
-            active: true,
-            start: 0
+impl Default for Snake {
+    fn default() -> Snake {
+        Snake {
+            direction: (1, 0),
+            last_direction: (1, 0),
+            nodes: vec![Node::new(8, 4), Node::new(7, 4), Node::new(6, 4), Node::new(5, 4)]
         }
     }
 }
@@ -51,22 +70,20 @@ impl Node {
     }
 
     fn display_data(&self) -> [f64; 4]{
-        [self.x as f64, self.y as f64, SIZE, SIZE]
+        [self.x as f64 * SIZE, self.y as f64 * SIZE, SIZE, SIZE]
     }
 }
 
 fn main() {
     let mut frame: u64 = 0;
     let speed = SPEED;
-    let mut window: PistonWindow = WindowSettings::new("Hello Piston!", (WIDTH * (SIZE as u32), HEIGHT * (SIZE as u32)))
+    let mut window: PistonWindow = WindowSettings::new("Rusty Snake", (WIDTH * (SIZE as u32), HEIGHT * (SIZE as u32)))
         .exit_on_esc(true)
         .build()
         .unwrap_or_else(|e| { panic!("Failed to build PistonWindow: {}", e) });
     window.set_event_settings(EventSettings::new().ups(UPS));
 
-    let mut board = Board::default();
-    let sq = board.nodes();
-    let mut pos_x = 50.0;
+    let mut snake = Snake::default();
 
     while let Some(e) = window.next() {
         window.draw_2d(&e, |_c, g, _d| {
@@ -77,13 +94,7 @@ fn main() {
                 _c.transform,
                 g,
             );
-            rectangle(
-                color::GREEN,
-                [pos_x, 50.0, 150.0, 50.0],
-                _c.transform,
-                g,
-            );
-            for x in board.nodes().iter() {
+            for x in snake.nodes_display_data().iter() {
                 rectangle(
                     color::GREEN,
                     *x,
@@ -92,13 +103,16 @@ fn main() {
                 );
             }
         });
-        if let Some(args) = e.update_args() {
-            pos_x += 0.5;
+
+        if let Some(b) = e.press_args() {
+            snake.handle_key(&b);
+        }
+
+        if let Some(_) = e.update_args() {
             if frame % (UPS / speed) == 0 {
-                board.update();
+                snake.update();
             }
             frame = (frame + 1) % UPS;
-            // rotation += 0.25;
         }
     }
 }
