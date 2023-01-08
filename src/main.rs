@@ -45,10 +45,10 @@ impl Snake {
     pub fn read_direction(&mut self) {
         if let Some(next_move) = self.moves.pop() {
             self.direction = match next_move {
-                Key::Up if self.last_direction != DOWN => UP,
-                Key::Down if self.last_direction != UP => DOWN,
-                Key::Right if self.last_direction != LEFT => RIGHT,
-                Key::Left if self.last_direction != RIGHT => LEFT,
+                Key::K if self.last_direction != DOWN => UP,
+                Key::J if self.last_direction != UP => DOWN,
+                Key::L if self.last_direction != LEFT => RIGHT,
+                Key::H if self.last_direction != RIGHT => LEFT,
                 _ => self.direction,
             }
         }
