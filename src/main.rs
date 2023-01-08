@@ -1,4 +1,7 @@
 extern crate piston_window;
+use std::collections::HashSet;
+use std::hash::Hash;
+
 use piston_window::*;
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
@@ -36,10 +39,12 @@ struct Snake {
 impl Snake {
     // 14 X 20
     pub fn nodes_display_data(&mut self) -> Vec<[f64; 4]> {
-        self.nodes
-            .iter()
-            .map(|node| node.display_data())
-            .collect::<Vec<_>>()
+        let head = self.nodes.get(0).unwrap();
+        let unique_nodes: HashSet<&Node> = self.nodes[1..].iter().collect();
+        let mut unique_nodes: Vec<[f64; 4]> =
+            unique_nodes.iter().map(|s| <[f64; 4]>::from(*s)).collect();
+        unique_nodes.insert(0, <[f64; 4]>::from(head));
+        unique_nodes
     }
 
     pub fn read_direction(&mut self) {
@@ -109,19 +114,21 @@ impl Default for Snake {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Eq, PartialEq, Hash)]
 struct Node {
     x: i32,
     y: i32,
 }
 
+impl From<&Node> for [f64; 4] {
+    fn from(node: &Node) -> [f64; 4] {
+        [node.x as f64 * SIZE, node.y as f64 * SIZE, SIZE, SIZE]
+    }
+}
+
 impl Node {
     fn new(x: i32, y: i32) -> Node {
-        Self { x: x, y: y }
-    }
-
-    fn display_data(&self) -> [f64; 4] {
-        [self.x as f64 * SIZE, self.y as f64 * SIZE, SIZE, SIZE]
+        Self { x, y }
     }
 }
 
@@ -145,7 +152,7 @@ fn main() {
                 rectangle(color::GREEN, *x, _c.transform, g);
             }
             rectangle(color::LIGHT_GREEN, snake_nodes[0], _c.transform, g);
-            rectangle(color::RED, snake.food.display_data(), _c.transform, g);
+            rectangle(color::RED, <[f64; 4]>::from(&snake.food), _c.transform, g);
         });
 
         if let Some(b) = e.press_args() {
