@@ -1,5 +1,4 @@
 extern crate piston_window;
-use std::collections::HashSet;
 use std::hash::Hash;
 
 use piston_window::*;
@@ -13,8 +12,8 @@ mod color {
     pub const RED: [f32; 4] = [0.8, 0.1, 0.1, 1.0];
 }
 
-const WIDTH: u32 = 20;
-const HEIGHT: u32 = 14;
+const WIDTH: usize = 20;
+const HEIGHT: usize = 14;
 const SIZE: f64 = 40.0;
 const SPEED_1: u64 = 1; // 1ups
 const SPEED_2: u64 = 3; // 3ups
@@ -37,14 +36,16 @@ struct Snake {
 }
 
 impl Snake {
-    // 14 X 20
-    pub fn nodes_display_data(&mut self) -> Vec<[f64; 4]> {
+    pub fn nodes_display_data(&mut self) -> [[&[f32; 4]; HEIGHT]; WIDTH] {
         let head = self.nodes.get(0).unwrap();
-        let unique_nodes: HashSet<&Node> = self.nodes[1..].iter().collect();
-        let mut unique_nodes: Vec<[f64; 4]> =
-            unique_nodes.iter().map(|s| <[f64; 4]>::from(*s)).collect();
-        unique_nodes.insert(0, <[f64; 4]>::from(head));
-        unique_nodes
+        let mut grid = [[&[0f32; 4]; HEIGHT]; WIDTH];
+
+        for node in &self.nodes {
+            grid[node.x][node.y] = &color::GREEN;
+        }
+        grid[head.x][head.y] = &color::LIGHT_GREEN;
+
+        grid
     }
 
     pub fn read_direction(&mut self) {
@@ -67,8 +68,8 @@ impl Snake {
 
     pub fn new_food(&mut self) {
         let mut rng = rand::thread_rng();
-        let x = Uniform::new(0, WIDTH).sample(&mut rng) as i32;
-        let y = Uniform::new(0, HEIGHT).sample(&mut rng) as i32;
+        let x = Uniform::new(0, WIDTH).sample(&mut rng);
+        let y = Uniform::new(0, HEIGHT).sample(&mut rng);
         self.food = Node::new(x, y);
     }
 
@@ -90,8 +91,8 @@ impl Snake {
         self.nodes.insert(
             0,
             Node::new(
-                (head.x + self.direction.0).rem_euclid(WIDTH as i32),
-                (head.y + self.direction.1).rem_euclid(HEIGHT as i32),
+                (head.x as i32 + self.direction.0).rem_euclid(WIDTH as i32) as usize,
+                (head.y as i32 + self.direction.1).rem_euclid(HEIGHT as i32) as usize,
             ),
         );
     }
@@ -116,8 +117,8 @@ impl Default for Snake {
 
 #[derive(Eq, PartialEq, Hash)]
 struct Node {
-    x: i32,
-    y: i32,
+    x: usize,
+    y: usize,
 }
 
 impl From<&Node> for [f64; 4] {
@@ -127,7 +128,7 @@ impl From<&Node> for [f64; 4] {
 }
 
 impl Node {
-    fn new(x: i32, y: i32) -> Node {
+    fn new(x: usize, y: usize) -> Node {
         Self { x, y }
     }
 }
@@ -135,7 +136,7 @@ impl Node {
 fn main() {
     let mut window: PistonWindow = WindowSettings::new(
         "Rusty Snake",
-        (WIDTH * (SIZE as u32), HEIGHT * (SIZE as u32)),
+        (WIDTH as u32 * (SIZE as u32), HEIGHT as u32 * (SIZE as u32)),
     )
     .exit_on_esc(true)
     .build()
@@ -147,11 +148,17 @@ fn main() {
     while let Some(e) = window.next() {
         window.draw_2d(&e, |_c, g, _d| {
             clear(color::PURPLE, g);
-            let snake_nodes = snake.nodes_display_data();
-            for x in snake_nodes[1..].iter() {
-                rectangle(color::GREEN, *x, _c.transform, g);
+            let display_data = snake.nodes_display_data();
+            for (i, row) in display_data.iter().enumerate() {
+                for (j, _) in row.iter().enumerate() {
+                    rectangle(
+                        *display_data[i][j],
+                        [i as f64 * SIZE, j as f64 * SIZE, SIZE, SIZE],
+                        _c.transform,
+                        g,
+                    );
+                }
             }
-            rectangle(color::LIGHT_GREEN, snake_nodes[0], _c.transform, g);
             rectangle(color::RED, <[f64; 4]>::from(&snake.food), _c.transform, g);
         });
 
